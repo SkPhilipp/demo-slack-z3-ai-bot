@@ -1,9 +1,11 @@
-import fire
-from rebot.main import CLI
+import os
+from slack_bolt.adapter.socket_mode import SocketModeHandler
+
+from rebot.main import app
 
 
 def main():
-    fire.Fire(component=CLI, name="re-bot")
+    SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"]).start()
 
 
 if __name__ == "__main__":

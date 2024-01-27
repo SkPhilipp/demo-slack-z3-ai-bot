@@ -9,11 +9,12 @@ license = "SSPL-1.0"
 classifiers = ["Private :: Do not Upload"]
 
 [tool.poetry.scripts]
-"re-bot" = "rebot.__main__:main"
+"rebot" = "rebot.__main__:main"
 
 [tool.poetry.dependencies]
 python = "^3.11"
 fire = "^0.5.0"
+slack-bolt = "^1.18.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.3.2"
