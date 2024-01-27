@@ -1,3 +1,5 @@
+.env
+.env*
 .pytest_cache/
 .venv/
 dist/

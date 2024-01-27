@@ -12,9 +12,10 @@ classifiers = ["Private :: Do not Upload"]
 "rebot" = "rebot.__main__:main"
 
 [tool.poetry.dependencies]
-python = "^3.11"
-fire = "^0.5.0"
+python = "^3.12"
 slack-bolt = "^1.18.1"
+requests = "^2.31.0"
+python-dotenv = "^1.0.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.3.2"
