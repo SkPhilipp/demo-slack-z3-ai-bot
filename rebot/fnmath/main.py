@@ -37,10 +37,10 @@ def math__z3solve(expression: str):
     solver.add(parsed)
     result = solver.check()
     if result == z3.sat:
-        return f"The result is {solver.model()}"
+        return f"The result is {solver.model()}.\nExpression: ```\n{expression}\n```"
     elif result == z3.unsat:
-        return f"The result is unsatisfiable"
+        return f"The result is unsatisfiable.\nExpression: ```\n{expression}\n```"
     elif result == z3.unknown:
-        return f"The result is unknown"
+        return f"The result is unknown.\nExpression: ```\n{expression}\n```"
     else:
-        return f"An unknown error occurred"
+        return f"An unknown error occurred.\nExpression: ```\n{expression}\n```"

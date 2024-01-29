@@ -11,17 +11,10 @@ class FunctionService:
         self.function_catalog: FunctionCatalog = catalog
         self.completion_client: ChatCompletionClient = completion_client
 
-    def _remove_quotes(self, message: str) -> str:
-        """
-        Removes quotes from the beginning and end of a string
-
-        :param message:
-        :return:
-        """
-        quotes = ["\"", "'"]
-        if message[0] in quotes and message[-1] in quotes:
-            return message[1:-1]
-        return message
+    def parse_answer(self, text: str) -> Optional[str]:
+        answer_pattern = r'---ANSWER---\s*(.*?)\s*---NOTES---'
+        answer_match = re.search(answer_pattern, text, re.DOTALL)
+        return answer_match.group(1) if answer_match else None
 
     def complete_function(self, query: str) -> Function:
         """
@@ -34,33 +27,28 @@ class FunctionService:
             messages=[
                 ChatCompletionMessage(
                     role=ChatCompletionMessageRole.SYSTEM,
-                    content=f"""Your current task is to select the function most likely to resolve the user's request.
+                    content=f"""Your are given the following function list and must select one of them which you think is most likely to resolve the user's query.
 
-                            The following functions are available:
+                            ## Function List
+
                             {self.function_catalog.format_basic()}
 
-                            Answer exclusively with a function name.
-                            Provide no explanation.
+                            ## Examples
+                            
+                            ### Example 1
+                            - user: What is the weather like today?
+                            - assistant: search.google
 
-                            Example:
-                            - user: "What is the weather like today?"
-                            - you: "search.google" (PERFECT ANSWER)
+                            ### Example 2
+                            - user: Hey bot what's the square root of Pi
+                            - assistant: math.solve
 
-                            Counterexample:
-                            - user: "I wonder what Pandas look like"
-                            - you: "I think you should search.google because ..." (WRONG; should have answered "search.google")
-
-                            Example:
-                            - user: "Hey bot what's the square root of Pi"
-                            - you: "math.solve" (PERFECT ANSWER)
-
-                            Counterexample:
-                            - user: "What is 1 + 1?"
-                            - you: "math.solve Note: As an AI bla bla bla ..." (WRONG; should have answered "math.solve")
-
-                            Counterexample:
-                            - user: "Given x > 100 and x < 10 what is a possible value for x?"
-                            - you: "math.solve Note: This answer is bla bla bla" (WRONG; should have answered "math.solve")
+                            Your answer must be in the following format:
+                    
+                            ---ANSWER---
+                            WRITE FUNCTION NAME HERE
+                            ---NOTES---
+                            Note: Any additional comments you would like to provide.
                             """
                 ),
                 ChatCompletionMessage(
@@ -76,16 +64,13 @@ class FunctionService:
         if not function_name:
             raise Exception("No function name provided in the response")
 
+        function_name = self.parse_answer(function_name)
+
         function = self.function_catalog.lookup(function_name)
         if not function:
             raise Exception(f"No function found with name '{function_name}'")
 
         return function
-
-    def parse_answer(self, text: str) -> Optional[str]:
-        answer_pattern = r'---ANSWER---\s*(.*?)\s*---NOTES---'
-        answer_match = re.search(answer_pattern, text, re.DOTALL)
-        return answer_match.group(1) if answer_match else None
 
     def complete_inputs(self, query: str, function: Function) -> str:
         """
