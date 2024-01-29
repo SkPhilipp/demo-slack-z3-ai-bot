@@ -1,5 +1,8 @@
-from functions import Function, FunctionCatalog, FunctionPackage
-from mistral import ChatCompletionClient, ChatCompletionRequest, ChatCompletionMessageRole, ChatCompletionMessage
+import re
+from typing import Optional
+
+from rebot.ai.functions import Function, FunctionCatalog
+from rebot.ai.mistral import ChatCompletionClient, ChatCompletionRequest, ChatCompletionMessageRole, ChatCompletionMessage
 
 
 class FunctionService:
@@ -36,23 +39,28 @@ class FunctionService:
                             The following functions are available:
                             {self.function_catalog.format_basic()}
 
-                            Answer ONLY with a function name, provide no explanation and write nothing else.
+                            Answer exclusively with a function name.
+                            Provide no explanation.
 
                             Example:
                             - user: "What is the weather like today?"
-                            - you: "search.google"
+                            - you: "search.google" (PERFECT ANSWER)
 
-                            Counterexample, do NOT this:
+                            Counterexample:
                             - user: "I wonder what Pandas look like"
-                            - you: "I think you should search.google because ..."
+                            - you: "I think you should search.google because ..." (WRONG; should have answered "search.google")
 
                             Example:
                             - user: "Hey bot what's the square root of Pi"
-                            - you: "math.solve"
+                            - you: "math.solve" (PERFECT ANSWER)
 
-                            Counterexample, do NOT this:
+                            Counterexample:
                             - user: "What is 1 + 1?"
-                            - you: "math.solve Note: bla bla bla ..."
+                            - you: "math.solve Note: As an AI bla bla bla ..." (WRONG; should have answered "math.solve")
+
+                            Counterexample:
+                            - user: "Given x > 100 and x < 10 what is a possible value for x?"
+                            - you: "math.solve Note: This answer is bla bla bla" (WRONG; should have answered "math.solve")
                             """
                 ),
                 ChatCompletionMessage(
@@ -74,7 +82,12 @@ class FunctionService:
 
         return function
 
-    def complete_arguments(self, query: str, function: Function) -> str:
+    def parse_answer(self, text: str) -> Optional[str]:
+        answer_pattern = r'---ANSWER---\s*(.*?)\s*---NOTES---'
+        answer_match = re.search(answer_pattern, text, re.DOTALL)
+        return answer_match.group(1) if answer_match else None
+
+    def complete_inputs(self, query: str, function: Function) -> str:
         """
         Generates arguments for a given function to resolve a given user query.
 
@@ -86,31 +99,7 @@ class FunctionService:
             messages=[
                 ChatCompletionMessage(
                     role=ChatCompletionMessageRole.SYSTEM,
-                    content=f"""Your current task is to provide arguments for the function {function.name} to resolve the user's request.
-
-                            Here is the full information about the function:
-                            {function.format_full()}
-
-                            Answer ONLY with the arguments for the function, provide no explanation and write nothing else.
-
-                            Example: (in context of search.google)
-                            - user: "Hey how do I do python programming?"
-                            - you: "'introduction to python programming'"
-
-                            Counterexample, do NOT do this: (in context of search.google)
-                            - user: "Hey how do I do python programming?"
-                            - you: "Well you should search for 'python programming' because ..."
-
-                            Example: (in context of math.solve)
-                            - user: "What is 1 + 1?"
-                            - you: "'1 + 1'"
-
-                            Counterexample, do NOT do this: (in context of math.solve)
-                            - user: "What is 1 + 1?"
-                            - you: "'1 + 1' Note: bla bla bla ..."
-
-                            Provide arguments for the function {function.name}.
-                            """
+                    content=function.format_prompt()
                 ),
                 ChatCompletionMessage(
                     role=ChatCompletionMessageRole.USER,
@@ -125,51 +114,4 @@ class FunctionService:
         if not args:
             raise Exception("No arguments provided in the response")
 
-        return args
-
-
-def main():
-    def search__google(_):
-        print(f"searching google for {_}")
-
-    def math__solve(_):
-        print(f"solving {_}")
-
-    function_catalog = FunctionCatalog(
-        packages=[
-            FunctionPackage(
-                name="search",
-                functions=[
-                    Function(
-                        name="google",
-                        description="Searches Google for a query",
-                        examples="search_google('python programming')",
-                        inputs="A string query",
-                        outputs="Search results",
-                        callback=search__google
-                    ),
-                ]
-            ),
-            FunctionPackage(
-                name="math",
-                functions=[
-                    Function(
-                        name="solve",
-                        description="Solves a mathematical expression with a calculator",
-                        examples="math.solve('2 + 2')",
-                        inputs="A string expression",
-                        outputs="The result of the calculation",
-                        callback=math__solve
-                    )
-                ]
-            )
-        ]
-    )
-    function_service = FunctionService(function_catalog)
-    function = function_service.complete_function("Who is the president of the United States?")
-    args = function_service.complete_arguments("Who is the president of the United States?", function)
-    function.callback(args)
-
-
-if __name__ == "__main__":
-    main()
+        return self.parse_answer(args)

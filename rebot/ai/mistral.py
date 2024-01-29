@@ -1,9 +1,10 @@
 import json
 import os
-import requests
-from dotenv import load_dotenv
 from enum import Enum
 from typing import List, Optional
+
+import requests
+from dotenv import load_dotenv
 
 
 class ChatCompletionMessageRole(Enum):
@@ -29,7 +30,7 @@ class ChatCompletionRequest:
                  model: str = "mistral-medium",
                  temperature: float = 0.7,
                  top_p: float = 1.0,
-                 max_tokens: int = 16,
+                 max_tokens: int = 500,
                  stream: bool = False,
                  safe_prompt: bool = False,
                  random_seed: Optional[int] = None):
@@ -141,8 +142,10 @@ class ChatCompletionClient:
             "Accept": "application/json",
             "Authorization": f"Bearer {self._token}",
         }
+        print("Sending request to Mistral API...")
         response = requests.post(f"{self._base_url}/v1/chat/completions", headers=headers, data=json.dumps(request.to_dict()))
         response.raise_for_status()
+        print("Received response from Mistral API")
         return ChatCompletionResponse.from_dict(response.json())
 
 
