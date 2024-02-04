@@ -9,7 +9,7 @@ license = "SSPL-1.0"
 classifiers = ["Private :: Do not Upload"]
 
 [tool.poetry.scripts]
-"rebot" = "rebot.__main__:main"
+"rebot" = "rebot.main:main"
 
 [tool.poetry.dependencies]
 python = "^3.12"
@@ -18,6 +18,7 @@ requests = "^2.31.0"
 python-dotenv = "^1.0.1"
 z3-solver = "^4.12.5.0"
 sqlalchemy = "^2.0.25"
+pyinvoker = { path = "../pyinvoker" }
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.3.2"

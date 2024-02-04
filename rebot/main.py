@@ -1,31 +1,62 @@
 import logging
 import os
+from dataclasses import dataclass
 
 from dotenv import load_dotenv
+from pyinvoker.context import ContextDescriptors
+from pyinvoker.markdown import MarkdownFormatter
+from pyinvoker.usage import Usage
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
-from rebot.ai.functions import FunctionCatalog
-from rebot.ai.service import FunctionService
+from rebot.ai.mistral import ChatCompletionRequest, ChatCompletionMessageRole, ChatCompletionMessage, ChatCompletionClient
 from rebot.db.main import message_exists, message_create
-from rebot.fnchat.main import package_chat
-from rebot.fnformat.main import package_format
-from rebot.fnmath.main import package_math
-from rebot.fnsearch.main import package_search
+from rebot.extensions.function_catalog import function_catalog_usage
 
 logging.basicConfig(level=logging.INFO)
 
 load_dotenv()
 
-function_catalog = FunctionCatalog(packages=[
-    package_search,
-    package_math,
-    package_format,
-    package_chat
-])
-function_service = FunctionService(function_catalog)
-
 app = App(token=os.getenv("SLACK_BOT_TOKEN"))
+
+
+@dataclass
+class UserContext:
+    message: str
+
+
+context_descriptors = ContextDescriptors()
+context_descriptors.describe(UserContext, lambda ctx: ctx.message, description="The user's message which to act on.")
+
+
+def complete(message: str, usage: Usage) -> str:
+    formatter = MarkdownFormatter()
+    context = UserContext(message)
+    markdown_usage = formatter.format_usage(context_descriptors, [context], usage)
+    markdown_request = formatter.format_request([context], usage)
+    request = ChatCompletionRequest(
+        messages=[
+            ChatCompletionMessage(
+                role=ChatCompletionMessageRole.SYSTEM,
+                content=markdown_usage
+            ),
+            ChatCompletionMessage(
+                role=ChatCompletionMessageRole.USER,
+                content=markdown_request
+            ),
+            ChatCompletionMessage(
+                role=ChatCompletionMessageRole.USER,
+                content="Please provide the input in JSON format."
+            ),
+        ]
+    )
+    client = ChatCompletionClient()
+    response = client.complete(request)
+    response_text = response.choices[0].message.content if response.choices else None
+    if not response_text:
+        raise Exception("No arguments provided in the response")
+
+    return response_text
 
 
 @app.event("message")
@@ -51,9 +82,12 @@ def event_test(body, say, logger):
 
     logger.info(f"observed mention: {body}")
     message = body["event"]
-    function = function_service.complete_function(message["text"])
-    args = function_service.complete_inputs(message["text"], function)
-    result = function.callback(args)
+    message_text = message["text"]
+
+    print("message_text: ", message_text)
+    result = complete(message_text, function_catalog_usage)
+    print("result: ", result)
+
     say(f"<@{message['user']}> {result}")
 
 
