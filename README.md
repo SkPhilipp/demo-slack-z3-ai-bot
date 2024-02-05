@@ -10,7 +10,6 @@ See [Poetry](https://python-poetry.org/) for more information.
 Development requires:
 
 - Bash
-- [Docker](https://www.docker.com/)
 - [Python](https://www.python.org/)
 - [Poetry](https://python-poetry.org/)
 
